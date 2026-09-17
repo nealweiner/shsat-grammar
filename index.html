@@ -73,6 +73,8 @@
 </header>
 <div id="app"></div>
 </div>
+<script src="voucher-crypto.js"></script>
+<script src="rewards.js"></script>
 <script src="concepts.js"></script>
 <script src="items.js"></script>
 <script>
@@ -100,7 +102,7 @@ function home(){
   h += '<div class="card"><div class="row" style="justify-content:space-between"><div><h3>Review</h3>'
     + '<div class="sub">' + REVIEW_SIZE + ' real questions: ones you missed first (' + missed + ' waiting), then the concepts you are weakest on. ' + seen + ' of ' + ITEMS.length + ' seen so far.</div></div>'
     + '<button class="gold" onclick="review()" ' + (seen ? '' : 'disabled') + '>Review</button></div></div>';
-  h += '<h2>Concepts</h2><div class="card">';
+  h += '<div class="card" id="store"></div><h2>Concepts</h2><div class="card">';
   var grp = '';
   CONCEPTS.forEach(function(c){
     if(c.group !== grp){ grp = c.group; h += '<div class="group">' + grp + '</div>'; }
@@ -110,7 +112,7 @@ function home(){
       + '<button class="small ' + (s.learned ? '' : 'primary') + '" onclick="learn(\'' + c.id + '\')">' + (s.learned ? 'Again' : 'Learn') + '</button></div></div>';
   });
   h += '</div>';
-  app.innerHTML = h;
+  app.innerHTML = h; renderStore();
 }
 
 /* ============================ LESSON ============================ */
@@ -144,7 +146,7 @@ function checkView(){
 }
 window.answerCheck = function(j){
   var q = L.check[L.i], ok = j===q.a, s = cs(L.c.id);
-  s.ct++; if(ok){ s.cr++; L.cr++; } persist();
+  s.ct++; if(ok){ s.cr++; L.cr++; } persist(); addXP(XP_PER_QUESTION);
   reveal(j, q.a, ok, q.why, L.i+1 < L.check.length ? 'nextCheck()' : 'startReal()', L.i+1 < L.check.length ? 'Next' : 'Now the real questions →');
 };
 window.nextCheck = function(){ L.i++; checkView(); };
@@ -168,7 +170,7 @@ window.answerReal = function(j, mode){
   var ok = j===it.a, s = is(it.id), c = conceptOf(it), cst = cs(c.id);
   if(ok){ s.right++; cst.rr++; } else { s.wrong++; } s.last = Date.now(); cst.rt++;
   if(mode==='lesson' && ok) L.rr++; if(mode==='review' && ok) R.right++;
-  persist();
+  persist(); addXP(XP_PER_QUESTION);
   var exp = it.exp || '<i>No explanation is published for this form.</i>';
   var last = mode==='lesson' ? L.i+1 >= L.real.length : R.i+1 >= R.items.length;
   reveal(j, it.a, ok, exp, last ? (mode==='lesson' ? 'doneView()' : 'reviewDone()') : (mode==='lesson' ? 'nextReal()' : 'nextReview()'), last ? 'Finish' : 'Next');
@@ -186,7 +188,7 @@ function reveal(j, a, ok, why, next, label){
 }
 
 function doneView(){
-  var s = cs(L.c.id); s.learned = true; persist();
+  var s = cs(L.c.id); s.learned = true; persist(); addXP(25, 'lesson done');
   var next = CONCEPTS.find(function(c){ return !cs(c.id).learned; });
   var h = '<div class="card" style="text-align:center"><div class="big">' + (L.cr + L.rr) + ' / ' + (L.check.length + L.real.length) + '</div>'
     + '<div class="sub">' + L.c.name + ' &middot; ' + L.cr + ' of ' + L.check.length + ' quick checks, ' + L.rr + ' of ' + L.real.length + ' real questions</div>'
@@ -210,6 +212,7 @@ window.review = function(){
 };
 window.nextReview = function(){ R.i++; realView(R.items[R.i], 'review'); };
 window.reviewDone = function(){
+  addXP(25, 'review done');
   app.innerHTML = '<div class="card" style="text-align:center"><div class="big">' + R.right + ' / ' + R.items.length + '</div><div class="sub">Review</div>'
     + '<div class="row" style="justify-content:center;margin-top:16px"><button class="gold" onclick="review()">Another review</button><button onclick="go(\'home\')">Home</button></div></div>';
   window.scrollTo(0,0);
